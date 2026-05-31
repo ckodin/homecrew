@@ -190,6 +190,9 @@
   .cell.off{ cursor:default; }
   .cell.off:hover{ background:var(--surface-2); }
   .cell.off.today-col:hover{ background:color-mix(in oklch, var(--ink) 4%, var(--surface-2)); }
+  .cell[draggable="true"]{ cursor:grab; }
+  .cell[draggable="true"]:active{ cursor:grabbing; }
+  .cell.drag-over{ background:color-mix(in oklch, var(--ink) 10%, var(--surface-2)); outline:2px solid color-mix(in oklch, var(--ink) 40%, transparent); outline-offset:-2px; }
   .cell .plus{ opacity:0; font-size:18px; color:var(--ink-3); font-weight:300; transition:opacity .15s; }
   .cell:hover .plus{ opacity:.65; }
   .cell.unscheduled:hover .plus{ opacity:.3; }

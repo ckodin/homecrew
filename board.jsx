@@ -3,17 +3,52 @@
 const { useState, useEffect, useRef } = React;
 
 /* ---------- a single board cell ---------- */
-const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQuickToggle }) {
+const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQuickToggle, dragSrc, onMoveToken }) {
   const assigned = occ && occ.assignee;
   const done = occ && occ.status === "done";
   const m = assigned ? MEMBERS[occ.assignee] : null;
+  const cellRef = useRef(null);
+
+  const handleDragStart = (e) => {
+    dragSrc.current = { chore, dayIdx };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", `${chore.id}:${dayIdx}`);
+  };
+  const handleDragEnd = () => {
+    dragSrc.current = null;
+  };
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    cellRef.current?.classList.add("drag-over");
+  };
+  const handleDragEnter = (e) => e.preventDefault();
+  const handleDragLeave = (e) => {
+    if (!cellRef.current?.contains(e.relatedTarget))
+      cellRef.current?.classList.remove("drag-over");
+  };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    cellRef.current?.classList.remove("drag-over");
+    const src = dragSrc.current;
+    if (!src || (src.chore.id === chore.id && src.dayIdx === dayIdx)) return;
+    onMoveToken(src.chore, src.dayIdx, chore, dayIdx);
+  };
 
   return (
-    <div className={"cell" + (done ? " done" : "") + (isToday ? " today-col" : "")}
+    <div ref={cellRef}
+         className={"cell" + (done ? " done" : "") + (isToday ? " today-col" : "")}
          role="button" tabIndex={0}
+         draggable={!!assigned}
          aria-label={`${chore.name}, ${DAYS_FULL[dayIdx]}, ${done ? "completed by " + m.name : assigned ? "assigned to " + m.name : "unassigned"}`}
          onClick={() => onOpen(chore, dayIdx)}
-         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(chore, dayIdx); } }}>
+         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(chore, dayIdx); } }}
+         onDragStart={assigned ? handleDragStart : undefined}
+         onDragEnd={assigned ? handleDragEnd : undefined}
+         onDragOver={handleDragOver}
+         onDragEnter={handleDragEnter}
+         onDragLeave={handleDragLeave}
+         onDrop={handleDrop}>
       {assigned ? (
         <span className="tok-wrap">
           <span className="token" data-m={occ.assignee} style={{ "--m": m.color }}>
@@ -32,7 +67,8 @@ const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQ
 });
 
 /* ---------- the board grid ---------- */
-function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle }) {
+function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle, onMoveToken }) {
+  const dragSrc = useRef(null);
   return (
     <div className="board-wrap">
       <div className="board" role="grid" aria-label="Weekly chore board">
@@ -56,7 +92,8 @@ function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle }) {
               <Cell key={i} chore={chore} dayIdx={i}
                     occ={occs[cellKey(chore.id, i)]}
                     isToday={weekOffset === 0 && i === TODAY_INDEX}
-                    onOpen={onOpenCell} onQuickToggle={onQuickToggle} />
+                    onOpen={onOpenCell} onQuickToggle={onQuickToggle}
+                    dragSrc={dragSrc} onMoveToken={onMoveToken} />
             ))}
           </React.Fragment>
         ))}

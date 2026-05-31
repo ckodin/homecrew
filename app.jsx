@@ -111,6 +111,30 @@ function App() {
   };
   const completeCell = (ctx) => toggleStatus(ctx.chore, ctx.dayIdx, (occsByWeek[weekOffset] || {})[cellKey(ctx.chore.id, ctx.dayIdx)]);
   const quickToggle = (chore, dayIdx) => toggleStatus(chore, dayIdx, occs[cellKey(chore.id, dayIdx)]);
+  const moveToken = useCallback((srcChore, srcDayIdx, dstChore, dstDayIdx) => {
+    if (srcChore.id === dstChore.id && srcDayIdx === dstDayIdx) return;
+    const srcKey = cellKey(srcChore.id, srcDayIdx);
+    const dstKey = cellKey(dstChore.id, dstDayIdx);
+    const srcOcc = occs[srcKey];
+    const dstOcc = occs[dstKey] || null;
+    if (!srcOcc?.assignee) return;
+    setOccsByWeek((prev) => {
+      const wk = { ...(prev[weekOffset] || {}) };
+      if (dstOcc?.assignee) {
+        wk[dstKey] = { ...srcOcc };
+        wk[srcKey] = { ...dstOcc };
+      } else {
+        wk[dstKey] = { ...srcOcc };
+        delete wk[srcKey];
+      }
+      return { ...prev, [weekOffset]: wk };
+    });
+    if (dstOcc?.assignee) {
+      flash(`Swapped ${MEMBERS[srcOcc.assignee].name} ↔ ${MEMBERS[dstOcc.assignee].name}`);
+    } else {
+      flash(`Moved to ${dstChore.name}`);
+    }
+  }, [weekOffset, occs, flash, setOccsByWeek]);
   const toggleFloating = (id) => {
     setFloating((prev) => prev.map((f) => {
       if (f.id !== id) return f;
@@ -226,7 +250,7 @@ function App() {
                 <span className="legspace" />
                 <span className="legkey"><IconCheck size={13} sw={2.5} style={{ color: "var(--ok)" }} /> done</span>
               </div>
-              <Board chores={activeTemplates} weekOffset={weekOffset} occs={occs} onOpenCell={openCell} onQuickToggle={quickToggle} />
+              <Board chores={activeTemplates} weekOffset={weekOffset} occs={occs} onOpenCell={openCell} onQuickToggle={quickToggle} onMoveToken={moveToken} />
               <FloatingTasks tasks={floating} onToggle={toggleFloating} onOpenNew={newFloatingSheet} />
             </>
           )}
