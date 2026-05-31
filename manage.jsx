@@ -4,10 +4,15 @@ const { useState: useS2, useEffect: useE2 } = React;
 
 /* Generic animated bottom sheet. `open` controls visibility; renders children. */
 function Sheet({ open, onClose, children }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (open && ref.current) ref.current.scrollTop = 0;
+  }, [open]);
+
   return (
     <>
       <div className={"scrim" + (open ? " show" : "")} onClick={onClose} />
-      <div className={"sheet" + (open ? " show" : "")} role="dialog" aria-modal="true">
+      <div ref={ref} className={"sheet" + (open ? " show" : "")} role="dialog" aria-modal="true">
         <div className="sheet-grip" />
         {open && children}
       </div>
@@ -32,6 +37,11 @@ function SheetHeader({ icon, title, sub, onClose }) {
 function TemplateSheet({ draft, isNew, onSave, onArchive, onClose }) {
   const [d, setD] = useS2(draft);
   useE2(() => { setD(draft); }, [draft && draft.id]);
+  const nameRef = React.useRef(null);
+  useE2(() => {
+    const t = setTimeout(() => nameRef.current?.focus(), 310);
+    return () => clearTimeout(t);
+  }, []);
   if (!d) return null;
 
   const set = (patch) => setD((p) => ({ ...p, ...patch }));
@@ -49,7 +59,7 @@ function TemplateSheet({ draft, isNew, onSave, onArchive, onClose }) {
                    sub={isNew ? "Recurring household chore" : d.category} onClose={onClose} />
 
       <p className="field-label">Name</p>
-      <input className="tinput" value={d.name} placeholder="e.g. Clean bathroom" autoFocus
+      <input ref={nameRef} className="tinput" value={d.name} placeholder="e.g. Clean bathroom"
              onChange={(e) => set({ name: e.target.value })} />
 
       <p className="field-label">Category</p>
@@ -96,12 +106,17 @@ function FloatingSheet({ draft, onSave, onClose }) {
   const [title, setTitle] = useS2("");
   const [assignee, setAssignee] = useS2(null);
   useE2(() => { setTitle(draft ? draft.title : ""); setAssignee(draft ? draft.assignee : null); }, [draft]);
+  const titleRef = React.useRef(null);
+  useE2(() => {
+    const t = setTimeout(() => titleRef.current?.focus(), 310);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <>
       <SheetHeader icon={<IconTasks size={22} />} title="New task" sub="One-off, not on a schedule" onClose={onClose} />
       <p className="field-label">What needs doing?</p>
-      <input className="tinput" value={title} placeholder="e.g. Call the plumber" autoFocus
+      <input ref={titleRef} className="tinput" value={title} placeholder="e.g. Call the plumber"
              onChange={(e) => setTitle(e.target.value)} />
       <p className="field-label">Assign to (optional)</p>
       <div className="assign-row">
