@@ -142,6 +142,18 @@ function App() {
     setManage(null);
     flash("Chore archived");
   };
+  const deleteTemplate = (id) => {
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+    setOccsByWeek((prev) => {
+      const next = {};
+      Object.entries(prev).forEach(([wk, occs]) => {
+        next[wk] = Object.fromEntries(Object.entries(occs).filter(([k]) => !k.startsWith(`${id}:`)));
+      });
+      return next;
+    });
+    setManage(null);
+    flash("Chore deleted");
+  };
 
   /* ---- floating management ---- */
   const newFloatingSheet = () => setManage({ type: "floating" });
@@ -240,7 +252,7 @@ function App() {
         <Sheet open={!!manage} onClose={closeManage}>
           {manage && manage.type === "template" && (
             <TemplateSheet draft={manage.draft} isNew={manage.isNew}
-                           onSave={saveTemplate} onArchive={archiveTemplate} onClose={closeManage} />
+                           onSave={saveTemplate} onArchive={archiveTemplate} onDelete={deleteTemplate} onClose={closeManage} />
           )}
           {manage && manage.type === "floating" && (
             <FloatingSheet draft={null} onSave={saveFloating} onClose={closeManage} />

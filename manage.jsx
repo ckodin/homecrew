@@ -34,8 +34,9 @@ function SheetHeader({ icon, title, sub, onClose }) {
 }
 
 /* ---------- Template editor (create / edit / archive) ---------- */
-function TemplateSheet({ draft, isNew, onSave, onArchive, onClose }) {
+function TemplateSheet({ draft, isNew, onSave, onArchive, onDelete, onClose }) {
   const [d, setD] = useS2(draft);
+  const [confirmDelete, setConfirmDelete] = useS2(false);
   useE2(() => { setD(draft); }, [draft && draft.id]);
   const nameRef = React.useRef(null);
   useE2(() => {
@@ -89,8 +90,18 @@ function TemplateSheet({ draft, isNew, onSave, onArchive, onClose }) {
       <button className="sheet-btn primary" style={{ marginTop: 24 }} disabled={!canSave} onClick={() => onSave(d)}>
         <IconCheck size={18} sw={2.25} /> {isNew ? "Create chore" : "Save changes"}
       </button>
-      {!isNew && (
+      {!isNew && !confirmDelete && (
         <button className="sheet-btn danger" onClick={() => onArchive(d.id)}>Archive chore</button>
+      )}
+      {!isNew && !confirmDelete && (
+        <button className="sheet-btn ghost" onClick={() => setConfirmDelete(true)}>Delete chore</button>
+      )}
+      {!isNew && confirmDelete && (
+        <>
+          <p className="field-label" style={{ textAlign: "center", marginTop: 16 }}>Delete "{d.name}" permanently?</p>
+          <button className="sheet-btn danger" onClick={() => onDelete(d.id)}>Yes, delete forever</button>
+          <button className="sheet-btn ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
+        </>
       )}
     </>
   );
