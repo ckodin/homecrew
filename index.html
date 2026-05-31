@@ -194,6 +194,7 @@
   .cell:hover .plus{ opacity:.65; }
   .cell.unscheduled:hover .plus{ opacity:.3; }
 
+  .tok-wrap{ position:relative; display:inline-flex; }
   .token{ --m:var(--c-clarisse); position:relative; min-width:30px; height:30px; padding:0 9px;
     display:inline-flex; align-items:center; justify-content:center; gap:5px; border-radius:9px;
     font-size:var(--chip-fs); font-weight:700; letter-spacing:.01em;
@@ -207,7 +208,7 @@
     box-shadow:0 1px 3px color-mix(in oklch, var(--m) 45%, transparent); }
   .token .chk{ width:13px; height:13px; }
 
-  .qcheck{ position:absolute; top:3px; right:3px; width:18px; height:18px; border-radius:50%;
+  .qcheck{ position:absolute; top:calc((var(--cell-h) - 30px) / -2 + 3px); right:-3px; width:18px; height:18px; border-radius:50%;
     border:1.5px solid color-mix(in oklch, var(--ink-3) 55%, transparent); background:var(--surface-2);
     display:grid; place-items:center; cursor:pointer; opacity:0; transition:opacity .15s, transform .12s; z-index:3; padding:0; }
   .cell:hover .qcheck{ opacity:.9; }
