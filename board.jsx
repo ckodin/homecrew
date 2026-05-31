@@ -49,7 +49,7 @@ function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle }) {
             <div className="chore-cell">
               <div className="chore-name">{chore.name}</div>
               <div className="chore-meta">
-                <span>{chore.freq}</span>
+                <span>{freqLabel(chore)}</span>
               </div>
             </div>
             {DAYS.map((d, i) => (
