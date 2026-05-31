@@ -3,16 +3,15 @@
 const { useState, useEffect, useRef } = React;
 
 /* ---------- a single board cell ---------- */
-function Cell({ chore, dayIdx, occ, isToday, scheduled, onOpen, onQuickToggle }) {
+const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQuickToggle }) {
   const assigned = occ && occ.assignee;
   const done = occ && occ.status === "done";
   const m = assigned ? MEMBERS[occ.assignee] : null;
-  const offSched = !scheduled && !assigned;
 
   return (
-    <div className={"cell" + (done ? " done" : "") + (isToday ? " today-col" : "") + (offSched ? " unscheduled" : "")}
+    <div className={"cell" + (done ? " done" : "") + (isToday ? " today-col" : "")}
          role="button" tabIndex={0}
-         aria-label={`${chore.name}, ${DAYS_FULL[dayIdx]}${!scheduled ? " (off-schedule)" : ""}, ${done ? "completed by " + m.name : assigned ? "assigned to " + m.name : "unassigned"}`}
+         aria-label={`${chore.name}, ${DAYS_FULL[dayIdx]}, ${done ? "completed by " + m.name : assigned ? "assigned to " + m.name : "unassigned"}`}
          onClick={() => onOpen(chore, dayIdx)}
          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(chore, dayIdx); } }}>
       {assigned ? (
@@ -30,7 +29,7 @@ function Cell({ chore, dayIdx, occ, isToday, scheduled, onOpen, onQuickToggle })
       )}
     </div>
   );
-}
+});
 
 /* ---------- the board grid ---------- */
 function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle }) {
@@ -55,14 +54,31 @@ function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle }) {
             </div>
             {DAYS.map((d, i) => (
               <Cell key={i} chore={chore} dayIdx={i}
-                    occ={occs[`${chore.id}:${i}`]}
-                    scheduled={true}
+                    occ={occs[cellKey(chore.id, i)]}
                     isToday={weekOffset === 0 && i === TODAY_INDEX}
                     onOpen={onOpenCell} onQuickToggle={onQuickToggle} />
             ))}
           </React.Fragment>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ---------- shared floating task row (also used by screens.jsx TasksScreen) ---------- */
+function FloatingTaskItem({ task, onToggle }) {
+  const m = task.assignee ? MEMBERS[task.assignee] : null;
+  return (
+    <div className={"ftask" + (task.status === "done" ? " done" : "")}
+         onClick={() => onToggle(task.id)} role="button" tabIndex={0}
+         onKeyDown={(e) => { if (e.key === "Enter") onToggle(task.id); }}>
+      <span className="ftask-check"><IconCheck size={12} sw={2.5} /></span>
+      <div className="ftask-body">
+        <div className="ftask-title">{task.title}</div>
+        <div className="ftask-meta">{m ? m.name : "Unassigned"}{task.status === "done" ? " · done" : ""}</div>
+      </div>
+      {m ? <span className="mini-av" style={{ background: m.color }}>{m.initial}</span>
+         : <span className="mini-av unassigned">?</span>}
     </div>
   );
 }
@@ -75,23 +91,7 @@ function FloatingTasks({ tasks, onToggle, onOpenNew }) {
         <h3 className="sec-title">Floating tasks</h3>
         <button className="sec-add" onClick={onOpenNew}><IconPlus size={15} sw={2.25} /> Add</button>
       </div>
-      {tasks.map((t) => {
-        const m = t.assignee ? MEMBERS[t.assignee] : null;
-        return (
-          <div key={t.id} className={"ftask" + (t.status === "done" ? " done" : "")}
-               onClick={() => onToggle(t.id)} role="button" tabIndex={0}
-               onKeyDown={(e) => { if (e.key === "Enter") onToggle(t.id); }}>
-            <span className="ftask-check"><IconCheck size={12} sw={2.5} /></span>
-            <div className="ftask-body">
-              <div className="ftask-title">{t.title}</div>
-              <div className="ftask-meta">{m ? `${m.name}` : "Unassigned"}{t.status === "done" ? " · done" : ""}</div>
-            </div>
-            {m
-              ? <span className="mini-av" style={{ background: m.color }}>{m.initial}</span>
-              : <span className="mini-av unassigned">?</span>}
-          </div>
-        );
-      })}
+      {tasks.map((t) => <FloatingTaskItem key={t.id} task={t} onToggle={onToggle} />)}
     </div>
   );
 }
@@ -100,10 +100,10 @@ function FloatingTasks({ tasks, onToggle, onOpenNew }) {
 function CellSheet({ ctx, occs, history, onAssign, onClear, onComplete, onClose }) {
   // ctx = { chore, dayIdx, weekOffset } or null
   const open = !!ctx;
-  const occ = open ? occs[`${ctx.chore.id}:${ctx.dayIdx}`] : null;
+  const occ = open ? occs[cellKey(ctx.chore.id, ctx.dayIdx)] : null;
   const assignee = occ && occ.assignee;
   const done = occ && occ.status === "done";
-  const hist = open ? (history[`${ctx.chore.id}:${ctx.dayIdx}`] || []) : [];
+  const hist = open ? (history[cellKey(ctx.chore.id, ctx.dayIdx)] || []) : [];
 
   return (
     <>
@@ -168,4 +168,4 @@ function CellSheet({ ctx, occs, history, onAssign, onClear, onComplete, onClose 
   );
 }
 
-Object.assign(window, { Board, FloatingTasks, CellSheet });
+Object.assign(window, { Board, FloatingTaskItem, FloatingTasks, CellSheet });

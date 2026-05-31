@@ -6,6 +6,10 @@ const MEMBERS = {
 };
 const MEMBER_LIST = [MEMBERS.clarisse, MEMBERS.ra];
 
+const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const EFFORT_LABELS = ["", "very light", "light", "moderate", "heavy", "very heavy"];
+const BALANCE_THRESHOLDS = { balanced: 0.12, uneven: 0.28 };
+
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAYS_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -21,11 +25,10 @@ function dateForDay(weekOffset, dayIdx) {
 function fmtDayNum(weekOffset, dayIdx) { return dateForDay(weekOffset, dayIdx).getDate(); }
 function fmtRange(weekOffset) {
   const a = dateForDay(weekOffset, 0), b = dateForDay(weekOffset, 6);
-  const mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const sameMonth = a.getMonth() === b.getMonth();
   return sameMonth
-    ? `${mo[a.getMonth()]} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`
-    : `${mo[a.getMonth()]} ${a.getDate()} – ${mo[b.getMonth()]} ${b.getDate()}, ${b.getFullYear()}`;
+    ? `${MONTH_SHORT[a.getMonth()]} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`
+    : `${MONTH_SHORT[a.getMonth()]} ${a.getDate()} – ${MONTH_SHORT[b.getMonth()]} ${b.getDate()}, ${b.getFullYear()}`;
 }
 function weekTitle(weekOffset) {
   if (weekOffset === 0) return "This week";
@@ -64,15 +67,18 @@ function balanceFor(a, b) {
   const total = a + b;
   if (!total) return { label: "No data yet", tone: "var(--ink-3)", note: "Complete a few chores to see how the load is shared." };
   const diff = Math.abs(a - b) / total; // share gap
-  if (diff <= 0.12) return { label: "Balanced", tone: "var(--ok)", note: "Effort is shared evenly across the household. Nice work." };
-  if (diff <= 0.28) return { label: "Slightly uneven", tone: "var(--warn)", note: "One of you is carrying a little more this month. Worth a glance." };
+  if (diff <= BALANCE_THRESHOLDS.balanced) return { label: "Balanced", tone: "var(--ok)", note: "Effort is shared evenly across the household. Nice work." };
+  if (diff <= BALANCE_THRESHOLDS.uneven) return { label: "Slightly uneven", tone: "var(--warn)", note: "One of you is carrying a little more this month. Worth a glance." };
   return { label: "Significantly uneven", tone: "oklch(0.6 0.14 28)", note: "The load is tilted heavily one way. Consider reassigning a few chores." };
 }
 
 function seedActivity() { return []; }
 
+const cellKey = (choreId, dayIdx) => `${choreId}:${dayIdx}`;
+
 Object.assign(window, {
   MEMBERS, MEMBER_LIST, DAYS, DAYS_FULL, TODAY_INDEX,
+  MONTH_SHORT, EFFORT_LABELS, BALANCE_THRESHOLDS, cellKey,
   dateForDay, fmtDayNum, fmtRange, weekTitle,
   CHORES, CATEGORIES, FREQUENCIES, freqLabel, newTemplate, newFloatingId,
   seedThisWeek, seedFloating, seedActivity, FAIRNESS, balanceFor,

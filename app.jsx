@@ -17,30 +17,30 @@ const COLOR_PAIRS = [
 ];
 
 const now = () => "just now";
+const TOAST_DURATION_MS = 1900;
 
 const loadLS = (key, fallback) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
 const saveLS = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
+
+function usePersistentState(key, fallback) {
+  const [state, setState] = useState(() => loadLS(key, fallback()));
+  useEffect(() => saveLS(key, state), [key, state]);
+  return [state, setState];
+}
 
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [tab, setTab] = useState("board");
   const [weekOffset, setWeekOffset] = useState(0);
-  const [occsByWeek, setOccsByWeek] = useState(() => loadLS("hc_occsByWeek", { 0: seedThisWeek() }));
-  const [histByWeek, setHistByWeek] = useState(() => loadLS("hc_histByWeek", { 0: {} }));
-  const [floating,   setFloating]   = useState(() => loadLS("hc_floating",   seedFloating()));
-  const [templates,  setTemplates]  = useState(() => loadLS("hc_templates",  CHORES.map((c) => ({ ...c }))));
-  const [activity,   setActivity]   = useState(() => loadLS("hc_activity",   seedActivity()));
+  const [occsByWeek, setOccsByWeek] = usePersistentState("hc_occsByWeek", () => ({ 0: seedThisWeek() }));
+  const [histByWeek, setHistByWeek] = usePersistentState("hc_histByWeek", () => ({ 0: {} }));
+  const [floating,   setFloating]   = usePersistentState("hc_floating",   () => seedFloating());
+  const [templates,  setTemplates]  = usePersistentState("hc_templates",  () => CHORES.map((c) => ({ ...c })));
+  const [activity,   setActivity]   = usePersistentState("hc_activity",   () => seedActivity());
   const [sheetCtx, setSheetCtx] = useState(null);
   const [manage, setManage] = useState(null); // {type:'template'|'floating'|'member', ...}
   const [toast, setToast] = useState("");
   const toastTimer = useRef(null);
-
-  /* persist state to localStorage */
-  useEffect(() => saveLS("hc_occsByWeek", occsByWeek), [occsByWeek]);
-  useEffect(() => saveLS("hc_histByWeek", histByWeek), [histByWeek]);
-  useEffect(() => saveLS("hc_floating",   floating),   [floating]);
-  useEffect(() => saveLS("hc_templates",  templates),  [templates]);
-  useEffect(() => saveLS("hc_activity",   activity),   [activity]);
 
   /* apply theme tweaks to <html> */
   useEffect(() => {
@@ -59,7 +59,7 @@ function App() {
   const flash = useCallback((msg) => {
     setToast(msg);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), 1900);
+    toastTimer.current = setTimeout(() => setToast(""), TOAST_DURATION_MS);
   }, []);
 
   const occs = occsByWeek[weekOffset] || {};
@@ -89,37 +89,28 @@ function App() {
   const closeSheet = () => setSheetCtx(null);
 
   const assign = (ctx, memberKey) => {
-    const key = `${ctx.chore.id}:${ctx.dayIdx}`;
+    const key = cellKey(ctx.chore.id, ctx.dayIdx);
     setOcc(key, (o) => ({ assignee: memberKey, status: o && o.status === "done" ? "done" : "assigned", completedBy: o ? o.completedBy : null }));
     pushHist(key, { who: memberKey, text: `Assigned to ${MEMBERS[memberKey].name}`, when: now() });
     flash(`${ctx.chore.name} → ${MEMBERS[memberKey].name}`);
   };
   const clearCell = (ctx) => {
-    const key = `${ctx.chore.id}:${ctx.dayIdx}`;
+    const key = cellKey(ctx.chore.id, ctx.dayIdx);
     setOcc(key, () => null);
     pushHist(key, { who: null, text: "Unassigned", when: now() });
     flash("Cleared");
   };
-  const completeCell = (ctx) => {
-    const key = `${ctx.chore.id}:${ctx.dayIdx}`;
-    const cur = (occsByWeek[weekOffset] || {})[key];
+  const toggleStatus = (chore, dayIdx, cur) => {
     if (!cur || !cur.assignee) return;
-    const willDone = cur.status !== "done";
-    setOcc(key, (o) => ({ ...o, status: willDone ? "done" : "assigned", completedBy: willDone ? o.assignee : null }));
-    pushHist(key, { who: cur.assignee, text: willDone ? `Completed by ${MEMBERS[cur.assignee].name}` : "Reopened", when: now() });
-    if (willDone && weekOffset === 0) pushActivity(cur.assignee, `completed ${ctx.chore.name}`);
-    flash(willDone ? "Nice — done!" : "Reopened");
-  };
-  const quickToggle = (chore, dayIdx) => {
-    const key = `${chore.id}:${dayIdx}`;
-    const cur = occs[key];
-    if (!cur || !cur.assignee) return;
+    const key = cellKey(chore.id, dayIdx);
     const willDone = cur.status !== "done";
     setOcc(key, (o) => ({ ...o, status: willDone ? "done" : "assigned", completedBy: willDone ? o.assignee : null }));
     pushHist(key, { who: cur.assignee, text: willDone ? `Completed by ${MEMBERS[cur.assignee].name}` : "Reopened", when: now() });
     if (willDone && weekOffset === 0) pushActivity(cur.assignee, `completed ${chore.name}`);
     flash(willDone ? "Nice — done!" : "Reopened");
   };
+  const completeCell = (ctx) => toggleStatus(ctx.chore, ctx.dayIdx, (occsByWeek[weekOffset] || {})[cellKey(ctx.chore.id, ctx.dayIdx)]);
+  const quickToggle = (chore, dayIdx) => toggleStatus(chore, dayIdx, occs[cellKey(chore.id, dayIdx)]);
   const toggleFloating = (id) => {
     setFloating((prev) => prev.map((f) => {
       if (f.id !== id) return f;
@@ -175,7 +166,7 @@ function App() {
   const wkDone = wkVals.filter((o) => o.status === "done").length;
   const weekStats = { done: wkDone, total: wkTotal, rate: wkTotal ? Math.round((wkDone / wkTotal) * 100) : 0 };
   const memberStats = React.useMemo(() => {
-    const stats = { clarisse: { assigned: 0, completed: 0 }, ra: { assigned: 0, completed: 0 } };
+    const stats = Object.fromEntries(MEMBER_LIST.map((m) => [m.key, { assigned: 0, completed: 0 }]));
     Object.values(occsByWeek).forEach((week) =>
       Object.values(week).forEach((o) => {
         if (o.assignee && stats[o.assignee]) {

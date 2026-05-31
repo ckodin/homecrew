@@ -1,6 +1,6 @@
 /* manage.jsx — reusable bottom-sheet shell + Template / Floating-task / Member editors */
 
-const { useState: useS2, useEffect: useE2 } = React;
+const { useState, useEffect } = React;
 
 /* Generic animated bottom sheet. `open` controls visibility; renders children. */
 function Sheet({ open, onClose, children }) {
@@ -35,11 +35,11 @@ function SheetHeader({ icon, title, sub, onClose }) {
 
 /* ---------- Template editor (create / edit / archive) ---------- */
 function TemplateSheet({ draft, isNew, onSave, onArchive, onDelete, onClose }) {
-  const [d, setD] = useS2(draft);
-  const [confirmDelete, setConfirmDelete] = useS2(false);
-  useE2(() => { setD(draft); }, [draft && draft.id]);
+  const [d, setD] = useState(draft);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  useEffect(() => { setD(draft); }, [draft?.id]);
   const nameRef = React.useRef(null);
-  useE2(() => {
+  useEffect(() => {
     const t = setTimeout(() => nameRef.current?.focus(), 310);
     return () => clearTimeout(t);
   }, []);
@@ -84,7 +84,7 @@ function TemplateSheet({ draft, isNew, onSave, onArchive, onDelete, onClose }) {
         {[1,2,3,4,5].map((n) => (
           <button key={n} className={"effort-dot" + (d.effort === n ? " on" : "")} onClick={() => set({ effort: n })}>{n}</button>
         ))}
-        <span className="effort-hint">{["", "very light", "light", "moderate", "heavy", "very heavy"][d.effort]}</span>
+        <span className="effort-hint">{EFFORT_LABELS[d.effort]}</span>
       </div>
 
       <button className="sheet-btn primary" style={{ marginTop: 24 }} disabled={!canSave} onClick={() => onSave(d)}>
@@ -109,11 +109,11 @@ function TemplateSheet({ draft, isNew, onSave, onArchive, onDelete, onClose }) {
 
 /* ---------- Floating-task composer ---------- */
 function FloatingSheet({ draft, onSave, onClose }) {
-  const [title, setTitle] = useS2("");
-  const [assignee, setAssignee] = useS2(null);
-  useE2(() => { setTitle(draft ? draft.title : ""); setAssignee(draft ? draft.assignee : null); }, [draft]);
+  const [title, setTitle] = useState("");
+  const [assignee, setAssignee] = useState(null);
+  useEffect(() => { setTitle(draft ? draft.title : ""); setAssignee(draft ? draft.assignee : null); }, [draft]);
   const titleRef = React.useRef(null);
-  useE2(() => {
+  useEffect(() => {
     const t = setTimeout(() => titleRef.current?.focus(), 310);
     return () => clearTimeout(t);
   }, []);

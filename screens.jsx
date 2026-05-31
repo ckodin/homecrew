@@ -1,12 +1,12 @@
 /* screens.jsx — Insights, Tasks, Settings, TabBar (fully built out) */
 
-const { useState: useScr } = React;
+const { useState } = React;
 
 /* ============================================================
    INSIGHTS — fairness dashboard + week summary + activity feed
    ============================================================ */
 function Insights({ weekStats, activity }) {
-  const [metric, setMetric] = useScr("completed");
+  const [metric, setMetric] = useState("completed");
   const data = FAIRNESS[metric];
   const a = data.clarisse, b = data.ra;
   const total = a + b || 1;
@@ -55,7 +55,7 @@ function Insights({ weekStats, activity }) {
 
       {/* trend */}
       <div className="sec" style={{ marginTop: 4 }}>
-        <div className="sec-head"><h3 className="sec-title">Completed effort · last 4 weeks</h3></div>
+        <div className="sec-head"><h3 className="sec-title">Completed effort · last {FAIRNESS.trend.length} weeks</h3></div>
         <div className="trend">
           {FAIRNESS.trend.map((w) => (
             <div className="trend-wk" key={w.wk}>
@@ -98,7 +98,7 @@ function Insights({ weekStats, activity }) {
    TASKS — manage recurring chores + floating tasks
    ============================================================ */
 function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onToggleFloating, onNewFloating }) {
-  const [showArchived, setShowArchived] = useScr(false);
+  const [showArchived, setShowArchived] = useState(false);
   const active = templates.filter((t) => t.active);
   const archived = templates.filter((t) => !t.active);
 
@@ -148,21 +148,7 @@ function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onTog
           <h3 className="sec-title">Floating tasks</h3>
           <button className="sec-add" onClick={onNewFloating}><IconPlus size={15} sw={2.25} /> Add</button>
         </div>
-        {floating.map((t) => {
-          const m = t.assignee ? MEMBERS[t.assignee] : null;
-          return (
-            <div key={t.id} className={"ftask" + (t.status === "done" ? " done" : "")}
-                 onClick={() => onToggleFloating(t.id)} role="button" tabIndex={0}>
-              <span className="ftask-check"><IconCheck size={12} sw={2.5} /></span>
-              <div className="ftask-body">
-                <div className="ftask-title">{t.title}</div>
-                <div className="ftask-meta">{m ? m.name : "Unassigned"}{t.status === "done" ? " · done" : ""}</div>
-              </div>
-              {m ? <span className="mini-av" style={{ background: m.color }}>{m.initial}</span>
-                 : <span className="mini-av unassigned">?</span>}
-            </div>
-          );
-        })}
+        {floating.map((t) => <FloatingTaskItem key={t.id} task={t} onToggle={onToggleFloating} />)}
       </div>
     </div>
   );
@@ -172,7 +158,7 @@ function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onTog
    SETTINGS — household, members, notifications
    ============================================================ */
 function SettingsScreen({ memberStats, onOpenMember, onInvite }) {
-  const [notif, setNotif] = useScr({ reminders: true, nudges: true, weekly: false });
+  const [notif, setNotif] = useState({ reminders: true, nudges: true, weekly: false });
   const flip = (k) => setNotif((p) => ({ ...p, [k]: !p[k] }));
 
   return (
