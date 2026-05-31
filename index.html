@@ -156,9 +156,9 @@
   /* ---------- board ---------- */
   .board-wrap{ overflow-x:auto; margin:0 calc(var(--pad) * -1); padding:2px var(--pad) 4px; scrollbar-width:none; }
   .board-wrap::-webkit-scrollbar{ display:none; }
-  .board{ display:grid; grid-template-columns:var(--label-col) repeat(7, minmax(38px, 1fr));
+  .board{ display:grid; grid-template-columns:var(--label-col) repeat(7, minmax(0, 1fr));
     gap:var(--gap); background:var(--line); border:1px solid var(--line);
-    border-radius:var(--radius); overflow:hidden; min-width:362px; }
+    border-radius:var(--radius); overflow:hidden; }
   [data-look="soft"] .board{ background:transparent; border:0; overflow:visible; }
 
   .bh, .cell, .chore-cell{ background:var(--surface-2); }
