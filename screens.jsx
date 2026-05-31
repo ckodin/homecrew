@@ -145,7 +145,7 @@ function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onTog
 
       <div className="sec">
         <div className="sec-head">
-          <h3 className="sec-title">Floating tasks</h3>
+          <h3 className="sec-title">Other chores</h3>
           <button className="sec-add" onClick={onNewFloating}><IconPlus size={15} sw={2.25} /> Add</button>
         </div>
         {floating.map((t) => <FloatingTaskItem key={t.id} task={t} onToggle={onToggleFloating} />)}
