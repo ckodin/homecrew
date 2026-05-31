@@ -1,0 +1,146 @@
+/* manage.jsx — reusable bottom-sheet shell + Template / Floating-task / Member editors */
+
+const { useState: useS2, useEffect: useE2 } = React;
+
+/* Generic animated bottom sheet. `open` controls visibility; renders children. */
+function Sheet({ open, onClose, children }) {
+  return (
+    <>
+      <div className={"scrim" + (open ? " show" : "")} onClick={onClose} />
+      <div className={"sheet" + (open ? " show" : "")} role="dialog" aria-modal="true">
+        <div className="sheet-grip" />
+        {open && children}
+      </div>
+    </>
+  );
+}
+
+function SheetHeader({ icon, title, sub, onClose }) {
+  return (
+    <div className="sheet-head">
+      <div className="sheet-icon">{icon}</div>
+      <div>
+        <h2 className="sheet-title">{title}</h2>
+        {sub && <p className="sheet-sub">{sub}</p>}
+      </div>
+      <button className="sheet-x" onClick={onClose} aria-label="Close"><IconX size={16} /></button>
+    </div>
+  );
+}
+
+/* ---------- Template editor (create / edit / archive) ---------- */
+function TemplateSheet({ draft, isNew, onSave, onArchive, onClose }) {
+  const [d, setD] = useS2(draft);
+  useE2(() => { setD(draft); }, [draft && draft.id]);
+  if (!d) return null;
+
+  const set = (patch) => setD((p) => ({ ...p, ...patch }));
+  const toggleDay = (i) => set({ scheduled: d.scheduled.includes(i) ? d.scheduled.filter((x) => x !== i) : [...d.scheduled, i].sort() });
+  const pickFreq = (f) => {
+    const dd = defaultDaysFor(f);
+    set({ freq: f, scheduled: (f === "Daily" || f === "Weekdays") ? dd : d.scheduled });
+  };
+  const fixedDays = d.freq === "Daily" || d.freq === "Weekdays";
+  const canSave = d.name.trim() && d.scheduled.length > 0;
+
+  return (
+    <>
+      <SheetHeader icon={<IconBroom size={22} />} title={isNew ? "New chore" : "Edit chore"}
+                   sub={isNew ? "Recurring household chore" : d.category} onClose={onClose} />
+
+      <p className="field-label">Name</p>
+      <input className="tinput" value={d.name} placeholder="e.g. Clean bathroom" autoFocus
+             onChange={(e) => set({ name: e.target.value })} />
+
+      <p className="field-label">Category</p>
+      <div className="chiprow">
+        {CATEGORIES.map((c) => (
+          <button key={c} className={"chip-opt" + (d.category === c ? " on" : "")} onClick={() => set({ category: c })}>{c}</button>
+        ))}
+      </div>
+
+      <p className="field-label">Frequency</p>
+      <div className="chiprow">
+        {FREQUENCIES.map((f) => (
+          <button key={f} className={"chip-opt" + (d.freq === f ? " on" : "")} onClick={() => pickFreq(f)}>{f}</button>
+        ))}
+      </div>
+
+      <p className="field-label">{fixedDays ? "Days (set by frequency)" : "Days of week"}</p>
+      <div className="day-grid" style={{ opacity: fixedDays ? .5 : 1, pointerEvents: fixedDays ? "none" : "auto" }}>
+        {DAYS.map((day, i) => (
+          <button key={day} className={"day-opt" + (d.scheduled.includes(i) ? " on" : "")} onClick={() => toggleDay(i)}>{day[0]}</button>
+        ))}
+      </div>
+
+      <p className="field-label">Effort</p>
+      <div className="effort-pick">
+        {[1,2,3,4,5].map((n) => (
+          <button key={n} className={"effort-dot" + (d.effort === n ? " on" : "")} onClick={() => set({ effort: n })}>{n}</button>
+        ))}
+        <span className="effort-hint">{["", "very light", "light", "moderate", "heavy", "very heavy"][d.effort]}</span>
+      </div>
+
+      <button className="sheet-btn primary" style={{ marginTop: 24 }} disabled={!canSave} onClick={() => onSave(d)}>
+        <IconCheck size={18} sw={2.25} /> {isNew ? "Create chore" : "Save changes"}
+      </button>
+      {!isNew && (
+        <button className="sheet-btn danger" onClick={() => onArchive(d.id)}>Archive chore</button>
+      )}
+    </>
+  );
+}
+
+/* ---------- Floating-task composer ---------- */
+function FloatingSheet({ draft, onSave, onClose }) {
+  const [title, setTitle] = useS2("");
+  const [assignee, setAssignee] = useS2(null);
+  useE2(() => { setTitle(draft ? draft.title : ""); setAssignee(draft ? draft.assignee : null); }, [draft]);
+
+  return (
+    <>
+      <SheetHeader icon={<IconTasks size={22} />} title="New task" sub="One-off, not on a schedule" onClose={onClose} />
+      <p className="field-label">What needs doing?</p>
+      <input className="tinput" value={title} placeholder="e.g. Call the plumber" autoFocus
+             onChange={(e) => setTitle(e.target.value)} />
+      <p className="field-label">Assign to (optional)</p>
+      <div className="assign-row">
+        {MEMBER_LIST.map((m) => (
+          <button key={m.key} className={"assign-opt" + (assignee === m.key ? " sel" : "")} style={{ "--am": m.color }}
+                  onClick={() => setAssignee(assignee === m.key ? null : m.key)}>
+            <span className="ao-av" style={{ background: m.color }}>{m.initial}</span>
+            <span className="ao-name">{m.name}</span>
+          </button>
+        ))}
+      </div>
+      <button className="sheet-btn primary" style={{ marginTop: 8 }} disabled={!title.trim()}
+              onClick={() => onSave({ title: title.trim(), assignee })}>
+        <IconPlus size={18} sw={2.25} /> Add task
+      </button>
+    </>
+  );
+}
+
+/* ---------- Member detail ---------- */
+function MemberSheet({ member, stats, onClose }) {
+  if (!member) return null;
+  return (
+    <>
+      <SheetHeader
+        icon={<span className="mini-av" style={{ background: member.color, width: 30, height: 30, fontSize: 13 }}>{member.initial}</span>}
+        title={member.name} sub={member.key === "clarisse" ? "Household owner" : "Member · joined Apr 2026"} onClose={onClose} />
+      <div className="balance-card" style={{ marginTop: 4 }}>
+        <div className="effbar">
+          <div className="effbar-top"><span className="effbar-name">Assigned this month</span><span className="effbar-val"><b>{stats.assigned}</b> pts</span></div>
+        </div>
+        <div className="effbar" style={{ marginBottom: 0 }}>
+          <div className="effbar-top"><span className="effbar-name">Completed this month</span><span className="effbar-val"><b>{stats.completed}</b> pts</span></div>
+        </div>
+      </div>
+      <button className="sheet-btn ghost"><IconRepeat size={17} /> Reassign their chores</button>
+      {member.key !== "clarisse" && <button className="sheet-btn danger">Remove from household</button>}
+    </>
+  );
+}
+
+Object.assign(window, { Sheet, SheetHeader, TemplateSheet, FloatingSheet, MemberSheet });
