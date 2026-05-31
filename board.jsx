@@ -4,17 +4,15 @@ const { useState, useEffect, useRef } = React;
 
 /* ---------- a single board cell ---------- */
 function Cell({ chore, dayIdx, occ, isToday, scheduled, onOpen, onQuickToggle }) {
-  if (!scheduled) {
-    return <div className={"cell off" + (isToday ? " today-col" : "")} aria-hidden="true" />;
-  }
   const assigned = occ && occ.assignee;
   const done = occ && occ.status === "done";
   const m = assigned ? MEMBERS[occ.assignee] : null;
+  const offSched = !scheduled && !assigned;
 
   return (
-    <div className={"cell" + (done ? " done" : "") + (isToday ? " today-col" : "")}
+    <div className={"cell" + (done ? " done" : "") + (isToday ? " today-col" : "") + (offSched ? " unscheduled" : "")}
          role="button" tabIndex={0}
-         aria-label={`${chore.name}, ${DAYS_FULL[dayIdx]}, ${done ? "completed by " + m.name : assigned ? "assigned to " + m.name : "unassigned"}`}
+         aria-label={`${chore.name}, ${DAYS_FULL[dayIdx]}${!scheduled ? " (off-schedule)" : ""}, ${done ? "completed by " + m.name : assigned ? "assigned to " + m.name : "unassigned"}`}
          onClick={() => onOpen(chore, dayIdx)}
          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(chore, dayIdx); } }}>
       {assigned ? (
