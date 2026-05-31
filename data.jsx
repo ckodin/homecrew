@@ -38,14 +38,7 @@ function weekTitle(weekOffset) {
 const CATEGORIES = ["Kitchen", "Cleaning", "Household", "Outdoor", "Admin", "Pets"];
 const FREQUENCIES = ["Daily", "Weekdays", "Weekly", "Fortnightly", "Monthly"];
 
-const CHORES = [
-  { id: "dishes",  name: "Dishes",          category: "Kitchen",   freq: "Daily",      effort: 1, scheduled: [0,1,2,3,4,5,6], active: true },
-  { id: "cook",    name: "Cook dinner",     category: "Kitchen",   freq: "Weekdays",   effort: 2, scheduled: [0,1,2,3,4],   active: true },
-  { id: "laundry", name: "Laundry",         category: "Cleaning",  freq: "Weekly",     effort: 2, scheduled: [2,5],       active: true },
-  { id: "vacuum",  name: "Vacuum",          category: "Cleaning",  freq: "Weekly",     effort: 3, scheduled: [5],         active: true },
-  { id: "trash",   name: "Trash & recycle", category: "Household", freq: "Weekly",     effort: 1, scheduled: [1],         active: true },
-  { id: "plants",  name: "Water plants",    category: "Household", freq: "Fortnightly",effort: 1, scheduled: [6],         active: true },
-];
+const CHORES = [];
 
 // Default scheduled days suggested by a frequency, used when creating/editing.
 function defaultDaysFor(freq) {
@@ -64,54 +57,14 @@ function newTemplate() {
 }
 function newFloatingId() { return "f" + (++__nid); }
 
-// Occurrence seed for THIS week (offset 0). Key = `${choreId}:${dayIdx}`.
-// status: 'unassigned' | 'assigned' | 'done'. The PRD example (Laundry Wed✓/Sat,
-// Vacuum Sat→Clarisse) is preserved exactly; surrounding chores fill a realistic week.
-function seedThisWeek() {
-  const A = (assignee, status, by) => ({ assignee, status, completedBy: by || (status === "done" ? assignee : null) });
-  return {
-    // Dishes — alternating, done through Saturday, Sunday pending
-    "dishes:0": A("ra", "done"),       "dishes:1": A("clarisse", "done"),
-    "dishes:2": A("ra", "done"),       "dishes:3": A("clarisse", "done"),
-    "dishes:4": A("ra", "done"),       "dishes:5": A("clarisse", "done"),
-    "dishes:6": A("ra", "assigned"),
-    // Cook dinner — weekdays
-    "cook:0": A("clarisse", "done"),   "cook:1": A("ra", "done"),
-    "cook:2": A("clarisse", "done"),   "cook:3": A("ra", "done"),
-    "cook:4": A("clarisse", "done"),
-    // Laundry — PRD: Wed completed by Clarisse, Sat assigned RA
-    "laundry:2": A("clarisse", "done"),
-    "laundry:5": A("ra", "assigned"),
-    // Vacuum — PRD: Sat, Clarisse
-    "vacuum:5": A("clarisse", "assigned"),
-    // Trash — Tue, done
-    "trash:1": A("ra", "done"),
-    // Water plants — Sun, unassigned (needs a home)
-    "plants:6": { assignee: null, status: "unassigned", completedBy: null },
-  };
-}
+function seedThisWeek() { return {}; }
 
-/* Floating tasks — PRD examples. */
-function seedFloating() {
-  return [
-    { id: "f1", title: "Buy dishwasher tablets", assignee: "clarisse", status: "open" },
-    { id: "f2", title: "Replace hallway light bulb", assignee: "ra", status: "open" },
-    { id: "f3", title: "Call plumber about leak", assignee: null, status: "open" },
-    { id: "f4", title: "Book vet appointment", assignee: "clarisse", status: "done" },
-  ];
-}
+function seedFloating() { return []; }
 
-/* Fairness — PRD rolling-4-week figures. */
 const FAIRNESS = {
-  assigned:  { clarisse: 12, ra: 10 },
-  completed: { clarisse: 14, ra: 8 },
-  // 4-week completed-effort trend (oldest → newest)
-  trend: [
-    { wk: "Wk 1", clarisse: 11, ra: 12 },
-    { wk: "Wk 2", clarisse: 13, ra: 10 },
-    { wk: "Wk 3", clarisse: 12, ra: 9 },
-    { wk: "Wk 4", clarisse: 14, ra: 8 },
-  ],
+  assigned:  { clarisse: 0, ra: 0 },
+  completed: { clarisse: 0, ra: 0 },
+  trend: [],
 };
 
 function balanceFor(a, b) {
@@ -123,17 +76,7 @@ function balanceFor(a, b) {
   return { label: "Significantly uneven", tone: "oklch(0.6 0.14 28)", note: "The load is tilted heavily one way. Consider reassigning a few chores." };
 }
 
-/* Recent household activity feed (for Insights). */
-function seedActivity() {
-  return [
-    { who: "clarisse", text: "completed Dishes",      when: "Today, 8:10" },
-    { who: "ra",       text: "completed Cook dinner", when: "Fri, 19:40" },
-    { who: "clarisse", text: "completed Laundry",     when: "Wed, 11:05" },
-    { who: "ra",       text: "completed Trash & recycle", when: "Tue, 7:50" },
-    { who: "clarisse", text: "added Water plants",    when: "Mon, 9:15" },
-    { who: "ra",       text: "completed Dishes",      when: "Mon, 21:00" },
-  ];
-}
+function seedActivity() { return []; }
 
 Object.assign(window, {
   MEMBERS, MEMBER_LIST, DAYS, DAYS_FULL, TODAY_INDEX,

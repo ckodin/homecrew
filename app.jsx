@@ -18,25 +18,29 @@ const COLOR_PAIRS = [
 
 const now = () => "just now";
 
+const loadLS = (key, fallback) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
+const saveLS = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
+
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [tab, setTab] = useState("board");
   const [weekOffset, setWeekOffset] = useState(0);
-  const [occsByWeek, setOccsByWeek] = useState(() => ({ 0: seedThisWeek() }));
-  const [histByWeek, setHistByWeek] = useState(() => ({
-    0: {
-      "laundry:2": [{ who: "clarisse", text: "Completed by Clarisse", when: "Wed" }, { who: "clarisse", text: "Assigned to Clarisse", when: "Mon" }],
-      "vacuum:5":  [{ who: "clarisse", text: "Assigned to Clarisse", when: "Thu" }],
-      "laundry:5": [{ who: "ra", text: "Assigned to RA", when: "Thu" }],
-    },
-  }));
-  const [floating, setFloating] = useState(() => seedFloating());
-  const [templates, setTemplates] = useState(() => CHORES.map((c) => ({ ...c })));
-  const [activity, setActivity] = useState(() => seedActivity());
+  const [occsByWeek, setOccsByWeek] = useState(() => loadLS("hc_occsByWeek", { 0: seedThisWeek() }));
+  const [histByWeek, setHistByWeek] = useState(() => loadLS("hc_histByWeek", { 0: {} }));
+  const [floating,   setFloating]   = useState(() => loadLS("hc_floating",   seedFloating()));
+  const [templates,  setTemplates]  = useState(() => loadLS("hc_templates",  CHORES.map((c) => ({ ...c }))));
+  const [activity,   setActivity]   = useState(() => loadLS("hc_activity",   seedActivity()));
   const [sheetCtx, setSheetCtx] = useState(null);
   const [manage, setManage] = useState(null); // {type:'template'|'floating'|'member', ...}
   const [toast, setToast] = useState("");
   const toastTimer = useRef(null);
+
+  /* persist state to localStorage */
+  useEffect(() => saveLS("hc_occsByWeek", occsByWeek), [occsByWeek]);
+  useEffect(() => saveLS("hc_histByWeek", histByWeek), [histByWeek]);
+  useEffect(() => saveLS("hc_floating",   floating),   [floating]);
+  useEffect(() => saveLS("hc_templates",  templates),  [templates]);
+  useEffect(() => saveLS("hc_activity",   activity),   [activity]);
 
   /* apply theme tweaks to <html> */
   useEffect(() => {
@@ -158,13 +162,25 @@ function App() {
   const wkTotal = wkVals.length;
   const wkDone = wkVals.filter((o) => o.status === "done").length;
   const weekStats = { done: wkDone, total: wkTotal, rate: wkTotal ? Math.round((wkDone / wkTotal) * 100) : 0 };
-  const memberStats = { clarisse: { assigned: FAIRNESS.assigned.clarisse, completed: FAIRNESS.completed.clarisse },
-                        ra: { assigned: FAIRNESS.assigned.ra, completed: FAIRNESS.completed.ra } };
+  const memberStats = React.useMemo(() => {
+    const stats = { clarisse: { assigned: 0, completed: 0 }, ra: { assigned: 0, completed: 0 } };
+    Object.values(occsByWeek).forEach((week) =>
+      Object.values(week).forEach((o) => {
+        if (o.assignee && stats[o.assignee]) {
+          stats[o.assignee].assigned++;
+          if (o.status === "done") stats[o.assignee].completed++;
+        }
+      })
+    );
+    return stats;
+  }, [occsByWeek]);
 
   const titleByTab = { board: null, tasks: "Tasks", insights: "Insights", settings: "Settings" };
   const todayKeys = Object.keys(thisWeek).filter((k) => k.endsWith(`:${TODAY_INDEX}`));
   const todayDone = todayKeys.filter((k) => thisWeek[k].status === "done").length;
-  const boardSub = `Sun May 31 · ${todayDone} of ${todayKeys.length} today done`;
+  const todayDate = dateForDay(0, TODAY_INDEX);
+  const todayLabel = todayDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const boardSub = `${todayLabel} · ${todayDone} of ${todayKeys.length} today done`;
 
   return (
     <div className="canvas">
