@@ -16,17 +16,17 @@ function Cell({ chore, dayIdx, occ, isToday, scheduled, onOpen, onQuickToggle })
          onClick={() => onOpen(chore, dayIdx)}
          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(chore, dayIdx); } }}>
       {assigned ? (
-        <span className="tok-wrap">
-          <span className="token" data-m={occ.assignee} style={{ "--m": m.color }}>
-            {m.initial}
-          </span>
-          <button className="qcheck" aria-label={done ? "Mark not done" : "Mark complete"}
-                  onClick={(e) => { e.stopPropagation(); onQuickToggle(chore, dayIdx); }}>
-            <IconCheck size={11} sw={2.5} />
-          </button>
+        <span className="token" data-m={occ.assignee} style={{ "--m": m.color }}>
+          {m.initial}
         </span>
       ) : (
         <span className="plus">+</span>
+      )}
+      {assigned && (
+        <button className="qcheck" aria-label={done ? "Mark not done" : "Mark complete"}
+                onClick={(e) => { e.stopPropagation(); onQuickToggle(chore, dayIdx); }}>
+          <IconCheck size={11} sw={2.5} />
+        </button>
       )}
     </div>
   );
