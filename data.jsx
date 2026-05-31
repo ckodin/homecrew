@@ -36,24 +36,17 @@ function weekTitle(weekOffset) {
 
 /* Chore templates. scheduled = which weekday indices generate an occurrence. */
 const CATEGORIES = ["Kitchen", "Cleaning", "Household", "Outdoor", "Admin", "Pets"];
-const FREQUENCIES = ["Daily", "Weekdays", "Weekly", "Fortnightly", "Monthly"];
+const FREQUENCIES = ["Daily", "Weekly", "Fortnightly", "Monthly"];
 
 const CHORES = [];
 
-// Default scheduled days suggested by a frequency, used when creating/editing.
-function defaultDaysFor(freq) {
-  if (freq === "Daily") return [0,1,2,3,4,5,6];
-  if (freq === "Weekdays") return [0,1,2,3,4];
-  return [];
-}
 function freqLabel(t) {
-  if (t.freq === "Daily" || t.freq === "Weekdays") return t.freq;
-  const dl = (t.scheduled || []).map((i) => DAYS[i]).join(", ");
-  return dl ? `${t.freq} · ${dl}` : t.freq;
+  const n = t.timesPerPeriod || 1;
+  return n > 1 ? `${t.freq} · ${n}×` : t.freq;
 }
 let __nid = 100;
 function newTemplate() {
-  return { id: "c" + (++__nid), name: "", category: "Cleaning", freq: "Weekly", effort: 2, scheduled: [], active: true };
+  return { id: "c" + (++__nid), name: "", category: "Cleaning", freq: "Weekly", effort: 2, timesPerPeriod: 1, active: true };
 }
 function newFloatingId() { return "f" + (++__nid); }
 
@@ -81,6 +74,6 @@ function seedActivity() { return []; }
 Object.assign(window, {
   MEMBERS, MEMBER_LIST, DAYS, DAYS_FULL, TODAY_INDEX,
   dateForDay, fmtDayNum, fmtRange, weekTitle,
-  CHORES, CATEGORIES, FREQUENCIES, defaultDaysFor, freqLabel, newTemplate, newFloatingId,
+  CHORES, CATEGORIES, FREQUENCIES, freqLabel, newTemplate, newFloatingId,
   seedThisWeek, seedFloating, seedActivity, FAIRNESS, balanceFor,
 });

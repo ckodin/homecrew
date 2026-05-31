@@ -56,7 +56,7 @@ function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle }) {
             {DAYS.map((d, i) => (
               <Cell key={i} chore={chore} dayIdx={i}
                     occ={occs[`${chore.id}:${i}`]}
-                    scheduled={chore.scheduled.includes(i)}
+                    scheduled={true}
                     isToday={weekOffset === 0 && i === TODAY_INDEX}
                     onOpen={onOpenCell} onQuickToggle={onQuickToggle} />
             ))}

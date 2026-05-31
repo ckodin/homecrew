@@ -45,13 +45,8 @@ function TemplateSheet({ draft, isNew, onSave, onArchive, onClose }) {
   if (!d) return null;
 
   const set = (patch) => setD((p) => ({ ...p, ...patch }));
-  const toggleDay = (i) => set({ scheduled: d.scheduled.includes(i) ? d.scheduled.filter((x) => x !== i) : [...d.scheduled, i].sort() });
-  const pickFreq = (f) => {
-    const dd = defaultDaysFor(f);
-    set({ freq: f, scheduled: (f === "Daily" || f === "Weekdays") ? dd : d.scheduled });
-  };
-  const fixedDays = d.freq === "Daily" || d.freq === "Weekdays";
-  const canSave = d.name.trim() && d.scheduled.length > 0;
+  const pickFreq = (f) => set({ freq: f });
+  const canSave = d.name.trim() && d.timesPerPeriod >= 1;
 
   return (
     <>
@@ -76,11 +71,11 @@ function TemplateSheet({ draft, isNew, onSave, onArchive, onClose }) {
         ))}
       </div>
 
-      <p className="field-label">{fixedDays ? "Days (set by frequency)" : "Days of week"}</p>
-      <div className="day-grid" style={{ opacity: fixedDays ? .5 : 1, pointerEvents: fixedDays ? "none" : "auto" }}>
-        {DAYS.map((day, i) => (
-          <button key={day} className={"day-opt" + (d.scheduled.includes(i) ? " on" : "")} onClick={() => toggleDay(i)}>{day[0]}</button>
-        ))}
+      <p className="field-label">Times per {d.freq.toLowerCase()}</p>
+      <div className="chiprow" style={{ alignItems: "center", gap: 12 }}>
+        <button className="chip-opt" onClick={() => set({ timesPerPeriod: Math.max(1, d.timesPerPeriod - 1) })}>−</button>
+        <span style={{ minWidth: 24, textAlign: "center", fontWeight: 600 }}>{d.timesPerPeriod}</span>
+        <button className="chip-opt" onClick={() => set({ timesPerPeriod: d.timesPerPeriod + 1 })}>+</button>
       </div>
 
       <p className="field-label">Effort</p>
