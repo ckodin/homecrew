@@ -13,9 +13,12 @@ const BALANCE_THRESHOLDS = { balanced: 0.12, uneven: 0.28 };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAYS_FULL = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-// Anchor: the week of Mon May 25 – Sun May 31, 2026 (today = Sun May 31).
-const WEEK_START = new Date(2026, 4, 25);
-const TODAY_INDEX = 6; // Sunday
+// Anchor on the real current date: Monday of this week (Mon→Sun grid).
+const __now = new Date();
+__now.setHours(0, 0, 0, 0);
+const TODAY_INDEX = (__now.getDay() + 6) % 7; // JS getDay(): 0=Sun → Mon-based 0..6
+const WEEK_START = new Date(__now);
+WEEK_START.setDate(WEEK_START.getDate() - TODAY_INDEX); // back up to Monday
 
 function dateForDay(weekOffset, dayIdx) {
   const d = new Date(WEEK_START);
