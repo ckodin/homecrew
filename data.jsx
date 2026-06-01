@@ -1,10 +1,19 @@
 /* data.jsx — HomeCrew sample data (from the FairShare/HomeCrew PRD) */
 
 const MEMBERS = {
-  clarisse: { key: "clarisse", name: "Clarisse", initial: "C", color: "var(--c-clarisse)" },
-  ra:       { key: "ra",       name: "RA",       initial: "R", color: "var(--c-ra)" },
+  clarisse: { key: "clarisse", name: "Clarisse", initial: "C", color: "var(--c-clarisse)", role: "Owner" },
+  ra:       { key: "ra",       name: "RA",       initial: "R", color: "var(--c-ra)",       role: "Member" },
 };
 const MEMBER_LIST = [MEMBERS.clarisse, MEMBERS.ra];
+
+// Fallback palette for members added beyond the two Tweaks-driven defaults.
+const MEMBER_COLORS = ["#7f8d56", "#9a5a86", "#c0903e", "#3f8f86", "#b06a4e", "#5a6aa8"];
+function seedMembers() { return MEMBER_LIST.map((m) => ({ ...m })); }
+function memberInitial(name) { return ((name || "").trim()[0] || "?").toUpperCase(); }
+function pickMemberColor(usedColors) {
+  const free = MEMBER_COLORS.find((c) => !usedColors.includes(c));
+  return free || MEMBER_COLORS[usedColors.length % MEMBER_COLORS.length];
+}
 
 const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const EFFORT_LABELS = ["", "very light", "light", "moderate", "heavy", "very heavy"];
@@ -55,6 +64,7 @@ function newTemplate() {
   return { id: "c" + (++__nid), name: "", category: "Cleaning", freq: "Weekly", effort: 2, timesPerPeriod: 1, active: true };
 }
 function newFloatingId() { return "f" + (++__nid); }
+function newMemberId() { return "m" + (++__nid); }
 
 function seedThisWeek() { return {}; }
 
@@ -80,9 +90,9 @@ function seedActivity() { return []; }
 const cellKey = (choreId, dayIdx) => `${choreId}:${dayIdx}`;
 
 Object.assign(window, {
-  MEMBERS, MEMBER_LIST, DAYS, DAYS_FULL, TODAY_INDEX,
+  MEMBERS, MEMBER_LIST, MEMBER_COLORS, seedMembers, memberInitial, pickMemberColor, DAYS, DAYS_FULL, TODAY_INDEX,
   MONTH_SHORT, EFFORT_LABELS, BALANCE_THRESHOLDS, cellKey,
   dateForDay, fmtDayNum, fmtRange, weekTitle,
-  CHORES, CATEGORIES, FREQUENCIES, freqLabel, newTemplate, newFloatingId,
+  CHORES, CATEGORIES, FREQUENCIES, freqLabel, newTemplate, newFloatingId, newMemberId,
   seedThisWeek, seedFloating, seedActivity, FAIRNESS, balanceFor,
 });

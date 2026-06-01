@@ -108,7 +108,7 @@ function TemplateSheet({ draft, isNew, onSave, onArchive, onDelete, onClose }) {
 }
 
 /* ---------- Floating-task composer ---------- */
-function FloatingSheet({ draft, onSave, onClose }) {
+function FloatingSheet({ draft, members, onSave, onClose }) {
   const [title, setTitle] = useState("");
   const [assignee, setAssignee] = useState(null);
   useEffect(() => { setTitle(draft ? draft.title : ""); setAssignee(draft ? draft.assignee : null); }, [draft]);
@@ -126,7 +126,7 @@ function FloatingSheet({ draft, onSave, onClose }) {
              onChange={(e) => setTitle(e.target.value)} />
       <p className="field-label">Assign to (optional)</p>
       <div className="assign-row">
-        {MEMBER_LIST.map((m) => (
+        {members.map((m) => (
           <button key={m.key} className={"assign-opt" + (assignee === m.key ? " sel" : "")} style={{ "--am": m.color }}
                   onClick={() => setAssignee(assignee === m.key ? null : m.key)}>
             <span className="ao-av" style={{ background: m.color }}>{m.initial}</span>
@@ -142,24 +142,58 @@ function FloatingSheet({ draft, onSave, onClose }) {
   );
 }
 
-/* ---------- Member detail ---------- */
-function MemberSheet({ member, stats, onClose }) {
-  if (!member) return null;
+/* ---------- Member editor (add / edit name + role) ---------- */
+const MEMBER_ROLES = ["Owner", "Member"];
+function MemberSheet({ draft, isNew, stats, onSave, onRemove, onClose }) {
+  const [d, setD] = useState(draft);
+  useEffect(() => { setD(draft); }, [draft?.key]);
+  const nameRef = React.useRef(null);
+  useEffect(() => {
+    const t = setTimeout(() => nameRef.current?.focus(), 310);
+    return () => clearTimeout(t);
+  }, []);
+  if (!d) return null;
+
+  const set = (patch) => setD((p) => ({ ...p, ...patch }));
+  const s = stats || { assigned: 0, completed: 0 };
+  const swatchInitial = memberInitial(d.name);
+
   return (
     <>
       <SheetHeader
-        icon={<span className="mini-av" style={{ background: member.color, width: 30, height: 30, fontSize: 13 }}>{member.initial}</span>}
-        title={member.name} sub={member.key === "clarisse" ? "Household owner" : "Member · joined Apr 2026"} onClose={onClose} />
-      <div className="balance-card" style={{ marginTop: 4 }}>
-        <div className="effbar">
-          <div className="effbar-top"><span className="effbar-name">Assigned this month</span><span className="effbar-val"><b>{stats.assigned}</b> pts</span></div>
-        </div>
-        <div className="effbar" style={{ marginBottom: 0 }}>
-          <div className="effbar-top"><span className="effbar-name">Completed this month</span><span className="effbar-val"><b>{stats.completed}</b> pts</span></div>
-        </div>
+        icon={<span className="mini-av" style={{ background: d.color, width: 30, height: 30, fontSize: 13 }}>{swatchInitial}</span>}
+        title={isNew ? "Add member" : "Edit member"}
+        sub={isNew ? "New household member" : d.role} onClose={onClose} />
+
+      <p className="field-label">Name</p>
+      <input ref={nameRef} className="tinput" value={d.name} placeholder="e.g. Sam"
+             onChange={(e) => set({ name: e.target.value })} />
+
+      <p className="field-label">Role</p>
+      <div className="chiprow">
+        {MEMBER_ROLES.map((r) => (
+          <button key={r} className={"chip-opt" + (d.role === r ? " on" : "")} onClick={() => set({ role: r })}>{r}</button>
+        ))}
       </div>
-      <button className="sheet-btn ghost"><IconRepeat size={17} /> Reassign their chores</button>
-      {member.key !== "clarisse" && <button className="sheet-btn danger">Remove from household</button>}
+
+      <button className="sheet-btn primary" style={{ marginTop: 24 }} disabled={!d.name.trim()} onClick={() => onSave(d)}>
+        <IconCheck size={18} sw={2.25} /> {isNew ? "Add member" : "Save changes"}
+      </button>
+
+      {!isNew && (
+        <div className="balance-card" style={{ marginTop: 16 }}>
+          <div className="effbar">
+            <div className="effbar-top"><span className="effbar-name">Assigned this month</span><span className="effbar-val"><b>{s.assigned}</b> pts</span></div>
+          </div>
+          <div className="effbar" style={{ marginBottom: 0 }}>
+            <div className="effbar-top"><span className="effbar-name">Completed this month</span><span className="effbar-val"><b>{s.completed}</b> pts</span></div>
+          </div>
+        </div>
+      )}
+      {!isNew && <button className="sheet-btn ghost"><IconRepeat size={17} /> Reassign their chores</button>}
+      {!isNew && d.role !== "Owner" && (
+        <button className="sheet-btn danger" onClick={() => onRemove(d.key)}>Remove from household</button>
+      )}
     </>
   );
 }

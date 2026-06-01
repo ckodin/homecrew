@@ -5,13 +5,13 @@ const { useState } = React;
 /* ============================================================
    INSIGHTS — fairness dashboard + week summary + activity feed
    ============================================================ */
-function Insights({ weekStats, activity }) {
+function Insights({ weekStats, activity, members, membersById }) {
   const [metric, setMetric] = useState("completed");
   const data = FAIRNESS[metric];
-  const a = data.clarisse, b = data.ra;
-  const total = a + b || 1;
+  const a = data[members[0]?.key] ?? 0, b = data[members[1]?.key] ?? 0;
+  const total = members.reduce((s, m) => s + (data[m.key] ?? 0), 0) || 1;
   const bal = balanceFor(a, b);
-  const maxTrend = Math.max(...FAIRNESS.trend.flatMap((w) => [w.clarisse, w.ra]));
+  const maxTrend = Math.max(1, ...FAIRNESS.trend.flatMap((w) => members.map((m) => w[m.key] ?? 0)));
 
   return (
     <div>
@@ -40,14 +40,14 @@ function Insights({ weekStats, activity }) {
           <button className={"metric-tab" + (metric === "completed" ? " on" : "")} onClick={() => setMetric("completed")}>Completed effort</button>
         </div>
 
-        {MEMBER_LIST.map((m) => (
+        {members.map((m) => (
           <div className="effbar" key={m.key}>
             <div className="effbar-top">
               <span className="effbar-name"><span className="mini-av" style={{ background: m.color }}>{m.initial}</span>{m.name}</span>
-              <span className="effbar-val"><b>{data[m.key]}</b> pts</span>
+              <span className="effbar-val"><b>{data[m.key] ?? 0}</b> pts</span>
             </div>
             <div className="effbar-track">
-              <div className="effbar-fill" style={{ width: `${(data[m.key] / total) * 100}%`, background: m.color }} />
+              <div className="effbar-fill" style={{ width: `${((data[m.key] ?? 0) / total) * 100}%`, background: m.color }} />
             </div>
           </div>
         ))}
@@ -60,15 +60,16 @@ function Insights({ weekStats, activity }) {
           {FAIRNESS.trend.map((w) => (
             <div className="trend-wk" key={w.wk}>
               <div className="trend-bars">
-                <div className="trend-bar" style={{ height: `${(w.clarisse / maxTrend) * 100}%`, background: "var(--c-clarisse)" }} title={`Clarisse ${w.clarisse}`} />
-                <div className="trend-bar" style={{ height: `${(w.ra / maxTrend) * 100}%`, background: "var(--c-ra)" }} title={`RA ${w.ra}`} />
+                {members.map((m) => (
+                  <div key={m.key} className="trend-bar" style={{ height: `${((w[m.key] ?? 0) / maxTrend) * 100}%`, background: m.color }} title={`${m.name} ${w[m.key] ?? 0}`} />
+                ))}
               </div>
               <span className="trend-lbl">{w.wk}</span>
             </div>
           ))}
         </div>
         <div className="legend" style={{ marginTop: 14, justifyContent: "center" }}>
-          {MEMBER_LIST.map((m) => (
+          {members.map((m) => (
             <span className="legend-item" key={m.key}><span className="dot" style={{ background: m.color }} />{m.name}</span>
           ))}
         </div>
@@ -79,7 +80,7 @@ function Insights({ weekStats, activity }) {
         <div className="sec-head"><h3 className="sec-title">Recent activity</h3></div>
         <ul className="feed">
           {activity.map((h, i) => {
-            const m = h.who ? MEMBERS[h.who] : null;
+            const m = h.who ? membersById[h.who] : null;
             return (
               <li key={i} className="feed-item">
                 <span className="mini-av" style={{ background: m ? m.color : "var(--ink-3)" }}>{m ? m.initial : "·"}</span>
@@ -97,7 +98,7 @@ function Insights({ weekStats, activity }) {
 /* ============================================================
    TASKS — manage recurring chores + floating tasks
    ============================================================ */
-function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onToggleFloating, onNewFloating }) {
+function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onToggleFloating, onNewFloating, membersById }) {
   const [showArchived, setShowArchived] = useState(false);
   const active = templates.filter((t) => t.active);
   const archived = templates.filter((t) => !t.active);
@@ -148,7 +149,7 @@ function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onTog
           <h3 className="sec-title">Other chores</h3>
           <button className="sec-add" onClick={onNewFloating}><IconPlus size={15} sw={2.25} /> Add</button>
         </div>
-        {floating.map((t) => <FloatingTaskItem key={t.id} task={t} onToggle={onToggleFloating} />)}
+        {floating.map((t) => <FloatingTaskItem key={t.id} task={t} onToggle={onToggleFloating} membersById={membersById} />)}
       </div>
     </div>
   );
@@ -157,7 +158,7 @@ function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onTog
 /* ============================================================
    SETTINGS — household, members, notifications
    ============================================================ */
-function SettingsScreen({ memberStats, onOpenMember, onInvite }) {
+function SettingsScreen({ members, membersById, memberStats, onOpenMember, onAddMember }) {
   const [notif, setNotif] = useState({ reminders: true, nudges: true, weekly: false });
   const flip = (k) => setNotif((p) => ({ ...p, [k]: !p[k] }));
 
@@ -168,29 +169,29 @@ function SettingsScreen({ memberStats, onOpenMember, onInvite }) {
         <div className="set-group">
           <div className="set-row"><span className="sr-label">Name</span><span className="sr-val">Home Crew <IconChevR size={16} /></span></div>
           <div className="set-row"><span className="sr-label">Week starts on</span><span className="sr-val">Monday <IconChevR size={16} /></span></div>
-          <div className="set-row"><span className="sr-label">Members</span><span className="sr-val">2 <IconChevR size={16} /></span></div>
+          <div className="set-row"><span className="sr-label">Members</span><span className="sr-val">{members.length} <IconChevR size={16} /></span></div>
         </div>
       </div>
 
       <div className="sec" style={{ marginTop: 4 }}>
         <div className="sec-head">
           <h3 className="sec-title">Members</h3>
-          <button className="sec-add" onClick={onInvite}><IconPlus size={15} sw={2.25} /> Invite</button>
+          <button className="sec-add" onClick={onAddMember}><IconPlus size={15} sw={2.25} /> Add</button>
         </div>
-        {MEMBER_LIST.map((m) => (
+        {members.map((m) => (
           <div className="row-item tappable" key={m.key} onClick={() => onOpenMember(m)} role="button" tabIndex={0}>
             <span className="mini-av" style={{ background: m.color, width: 34, height: 34, fontSize: 14 }}>{m.initial}</span>
             <div className="ri-body">
               <div className="ri-title">{m.name}</div>
-              <div className="ri-meta">{m.key === "clarisse" ? "Owner" : "Member"} · {memberStats[m.key].completed} pts done</div>
+              <div className="ri-meta">{m.role} · {memberStats[m.key]?.completed ?? 0} pts done</div>
             </div>
             <span className="pill">Active</span>
             <IconChevR className="chev" size={18} />
           </div>
         ))}
-        <div className="row-item tappable" style={{ borderStyle: "dashed", cursor: "pointer" }} onClick={onInvite}>
+        <div className="row-item tappable" style={{ borderStyle: "dashed", cursor: "pointer" }} onClick={onAddMember}>
           <span className="mini-av unassigned" style={{ width: 34, height: 34 }}><IconPlus size={16} sw={2} /></span>
-          <div className="ri-body"><div className="ri-title" style={{ color: "var(--ink-3)" }}>Invite a housemate</div></div>
+          <div className="ri-body"><div className="ri-title" style={{ color: "var(--ink-3)" }}>Add a member</div></div>
         </div>
       </div>
 

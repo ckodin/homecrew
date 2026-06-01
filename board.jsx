@@ -14,10 +14,10 @@ const TOUCH_HOLD_MS = 250;   // long-press before a token is "picked up"
 const TOUCH_MOVE_TOL = 10;   // px of movement that cancels the pickup (treated as a scroll)
 
 /* ---------- a single board cell ---------- */
-const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQuickToggle, dragSrc, onMoveToken, chores }) {
-  const assigned = occ && occ.assignee;
-  const done = occ && occ.status === "done";
-  const m = assigned ? MEMBERS[occ.assignee] : null;
+const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQuickToggle, dragSrc, onMoveToken, chores, membersById }) {
+  const m = occ && occ.assignee ? membersById[occ.assignee] : null;
+  const assigned = !!m;
+  const done = assigned && occ.status === "done";
   const cellRef = useRef(null);
   const touch = useRef(null);
 
@@ -156,7 +156,7 @@ const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQ
 });
 
 /* ---------- the board grid ---------- */
-function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle, onMoveToken }) {
+function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle, onMoveToken, membersById }) {
   const dragSrc = useRef(null);
   return (
     <div className="board-wrap">
@@ -182,7 +182,7 @@ function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle, onMoveToke
                     occ={occs[cellKey(chore.id, i)]}
                     isToday={weekOffset === 0 && i === TODAY_INDEX}
                     onOpen={onOpenCell} onQuickToggle={onQuickToggle}
-                    dragSrc={dragSrc} onMoveToken={onMoveToken} chores={chores} />
+                    dragSrc={dragSrc} onMoveToken={onMoveToken} chores={chores} membersById={membersById} />
             ))}
           </React.Fragment>
         ))}
@@ -192,8 +192,8 @@ function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle, onMoveToke
 }
 
 /* ---------- shared floating task row (also used by screens.jsx TasksScreen) ---------- */
-function FloatingTaskItem({ task, onToggle }) {
-  const m = task.assignee ? MEMBERS[task.assignee] : null;
+function FloatingTaskItem({ task, onToggle, membersById }) {
+  const m = task.assignee ? membersById[task.assignee] : null;
   return (
     <div className={"ftask" + (task.status === "done" ? " done" : "")}
          onClick={() => onToggle(task.id)} role="button" tabIndex={0}
@@ -210,20 +210,20 @@ function FloatingTaskItem({ task, onToggle }) {
 }
 
 /* ---------- floating tasks list ---------- */
-function FloatingTasks({ tasks, onToggle, onOpenNew }) {
+function FloatingTasks({ tasks, onToggle, onOpenNew, membersById }) {
   return (
     <div className="sec">
       <div className="sec-head">
         <h3 className="sec-title">Other chores</h3>
         <button className="sec-add" onClick={onOpenNew}><IconPlus size={15} sw={2.25} /> Add</button>
       </div>
-      {tasks.map((t) => <FloatingTaskItem key={t.id} task={t} onToggle={onToggle} />)}
+      {tasks.map((t) => <FloatingTaskItem key={t.id} task={t} onToggle={onToggle} membersById={membersById} />)}
     </div>
   );
 }
 
 /* ---------- bottom sheet for a cell ---------- */
-function CellSheet({ ctx, occs, history, onAssign, onClear, onComplete, onClose }) {
+function CellSheet({ ctx, occs, history, onAssign, onClear, onComplete, onClose, members, membersById }) {
   // ctx = { chore, dayIdx, weekOffset } or null
   const open = !!ctx;
   const occ = open ? occs[cellKey(ctx.chore.id, ctx.dayIdx)] : null;
@@ -249,7 +249,7 @@ function CellSheet({ ctx, occs, history, onAssign, onClear, onComplete, onClose 
 
             <p className="sheet-label">Assign to</p>
             <div className="assign-row">
-              {MEMBER_LIST.map((m) => (
+              {members.map((m) => (
                 <button key={m.key}
                         className={"assign-opt" + (assignee === m.key ? " sel" : "")}
                         style={{ "--am": m.color }}
@@ -276,7 +276,7 @@ function CellSheet({ ctx, occs, history, onAssign, onClear, onComplete, onClose 
               : (
                 <ul className="hist">
                   {hist.map((h, i) => {
-                    const hm = h.who ? MEMBERS[h.who] : null;
+                    const hm = h.who ? membersById[h.who] : null;
                     return (
                       <li key={i}>
                         <span className="dotm" style={{ background: hm ? hm.color : "var(--ink-3)" }} />

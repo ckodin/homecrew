@@ -37,6 +37,8 @@ function App() {
   const [floating,   setFloating]   = usePersistentState("hc_floating",   () => seedFloating());
   const [templates,  setTemplates]  = usePersistentState("hc_templates",  () => CHORES.map((c) => ({ ...c })));
   const [activity,   setActivity]   = usePersistentState("hc_activity",   () => seedActivity());
+  const [members,    setMembers]    = usePersistentState("hc_members",    () => seedMembers());
+  const membersById = React.useMemo(() => Object.fromEntries(members.map((m) => [m.key, m])), [members]);
   const [sheetCtx, setSheetCtx] = useState(null);
   const [manage, setManage] = useState(null); // {type:'template'|'floating'|'member', ...}
   const [toast, setToast] = useState("");
@@ -91,8 +93,9 @@ function App() {
   const assign = (ctx, memberKey) => {
     const key = cellKey(ctx.chore.id, ctx.dayIdx);
     setOcc(key, (o) => ({ assignee: memberKey, status: o && o.status === "done" ? "done" : "assigned", completedBy: o ? o.completedBy : null }));
-    pushHist(key, { who: memberKey, text: `Assigned to ${MEMBERS[memberKey].name}`, when: now() });
-    flash(`${ctx.chore.name} → ${MEMBERS[memberKey].name}`);
+    const name = membersById[memberKey]?.name || "Someone";
+    pushHist(key, { who: memberKey, text: `Assigned to ${name}`, when: now() });
+    flash(`${ctx.chore.name} → ${name}`);
   };
   const clearCell = (ctx) => {
     const key = cellKey(ctx.chore.id, ctx.dayIdx);
@@ -105,7 +108,7 @@ function App() {
     const key = cellKey(chore.id, dayIdx);
     const willDone = cur.status !== "done";
     setOcc(key, (o) => ({ ...o, status: willDone ? "done" : "assigned", completedBy: willDone ? o.assignee : null }));
-    pushHist(key, { who: cur.assignee, text: willDone ? `Completed by ${MEMBERS[cur.assignee].name}` : "Reopened", when: now() });
+    pushHist(key, { who: cur.assignee, text: willDone ? `Completed by ${membersById[cur.assignee]?.name || "Someone"}` : "Reopened", when: now() });
     if (willDone && weekOffset === 0) pushActivity(cur.assignee, `completed ${chore.name}`);
     flash(willDone ? "Nice — done!" : "Reopened");
   };
@@ -130,11 +133,11 @@ function App() {
       return { ...prev, [weekOffset]: wk };
     });
     if (dstOcc?.assignee) {
-      flash(`Swapped ${MEMBERS[srcOcc.assignee].name} ↔ ${MEMBERS[dstOcc.assignee].name}`);
+      flash(`Swapped ${membersById[srcOcc.assignee]?.name || "Someone"} ↔ ${membersById[dstOcc.assignee]?.name || "Someone"}`);
     } else {
       flash(`Moved to ${dstChore.name}`);
     }
-  }, [weekOffset, occs, flash, setOccsByWeek]);
+  }, [weekOffset, occs, flash, setOccsByWeek, membersById]);
   const toggleFloating = (id) => {
     setFloating((prev) => prev.map((f) => {
       if (f.id !== id) return f;
@@ -179,8 +182,21 @@ function App() {
   };
 
   /* ---- member ---- */
-  const openMember = (m) => setManage({ type: "member", member: m });
-  const invite = () => flash("Invite link copied");
+  const addMember = () => setManage({ type: "member", isNew: true, draft: {
+    key: newMemberId(), name: "", initial: "?", color: pickMemberColor(members.map((m) => m.color)), role: "Member",
+  } });
+  const editMember = (m) => setManage({ type: "member", isNew: false, draft: { ...m } });
+  const saveMember = (d) => {
+    const next = { ...d, name: d.name.trim(), initial: memberInitial(d.name) };
+    setMembers((prev) => prev.some((m) => m.key === d.key) ? prev.map((m) => m.key === d.key ? next : m) : [...prev, next]);
+    setManage(null);
+    flash(manage && manage.isNew ? `Added ${next.name}` : "Saved");
+  };
+  const removeMember = (key) => {
+    setMembers((prev) => prev.filter((m) => m.key !== key));
+    setManage(null);
+    flash("Member removed");
+  };
   const closeManage = () => setManage(null);
 
   /* ---- computed stats ---- */
@@ -190,7 +206,7 @@ function App() {
   const wkDone = wkVals.filter((o) => o.status === "done").length;
   const weekStats = { done: wkDone, total: wkTotal, rate: wkTotal ? Math.round((wkDone / wkTotal) * 100) : 0 };
   const memberStats = React.useMemo(() => {
-    const stats = Object.fromEntries(MEMBER_LIST.map((m) => [m.key, { assigned: 0, completed: 0 }]));
+    const stats = Object.fromEntries(members.map((m) => [m.key, { assigned: 0, completed: 0 }]));
     Object.values(occsByWeek).forEach((week) =>
       Object.values(week).forEach((o) => {
         if (o.assignee && stats[o.assignee]) {
@@ -200,7 +216,7 @@ function App() {
       })
     );
     return stats;
-  }, [occsByWeek]);
+  }, [occsByWeek, members]);
 
   const titleByTab = { board: null, tasks: "Tasks", insights: "Insights", settings: "Settings" };
   const todayKeys = Object.keys(thisWeek).filter((k) => k.endsWith(`:${TODAY_INDEX}`));
@@ -220,7 +236,7 @@ function App() {
               <p className="hh-sub">{tab === "board" ? boardSub : tab === "tasks" ? "Recurring & one-off tasks" : tab === "insights" ? "How the load is shared" : "Household & members"}</p>
             </div>
             <div className="avatars">
-              {MEMBER_LIST.map((m) => (
+              {members.map((m) => (
                 <span key={m.key} className="av" style={{ background: m.color }}>{m.initial}</span>
               ))}
             </div>
@@ -244,24 +260,24 @@ function App() {
           {tab === "board" && (
             <>
               <div className="legend">
-                {MEMBER_LIST.map((m) => (
+                {members.map((m) => (
                   <span className="legend-item" key={m.key}><span className="dot" style={{ background: m.color }} />{m.name}</span>
                 ))}
                 <span className="legspace" />
                 <span className="legkey"><IconCheck size={13} sw={2.5} style={{ color: "var(--ok)" }} /> done</span>
               </div>
-              <Board chores={activeTemplates} weekOffset={weekOffset} occs={occs} onOpenCell={openCell} onQuickToggle={quickToggle} onMoveToken={moveToken} />
-              <FloatingTasks tasks={floating} onToggle={toggleFloating} onOpenNew={newFloatingSheet} />
+              <Board chores={activeTemplates} weekOffset={weekOffset} occs={occs} onOpenCell={openCell} onQuickToggle={quickToggle} onMoveToken={moveToken} membersById={membersById} />
+              <FloatingTasks tasks={floating} onToggle={toggleFloating} onOpenNew={newFloatingSheet} membersById={membersById} />
             </>
           )}
           {tab === "tasks" && <TasksScreen templates={templates} floating={floating}
                                 onEditTemplate={editTemplate} onNewTemplate={newTemplateSheet}
-                                onToggleFloating={toggleFloating} onNewFloating={newFloatingSheet} />}
-          {tab === "insights" && <Insights weekStats={weekStats} activity={activity} />}
-          {tab === "settings" && <SettingsScreen memberStats={memberStats} onOpenMember={openMember} onInvite={invite} />}
+                                onToggleFloating={toggleFloating} onNewFloating={newFloatingSheet} membersById={membersById} />}
+          {tab === "insights" && <Insights weekStats={weekStats} activity={activity} members={members} membersById={membersById} />}
+          {tab === "settings" && <SettingsScreen members={members} membersById={membersById} memberStats={memberStats} onOpenMember={editMember} onAddMember={addMember} />}
         </main>
 
-        <CellSheet ctx={sheetCtx} occs={occs} history={hist}
+        <CellSheet ctx={sheetCtx} occs={occs} history={hist} members={members} membersById={membersById}
                    onAssign={assign} onClear={clearCell} onComplete={completeCell} onClose={closeSheet} />
 
         <Sheet open={!!manage} onClose={closeManage}>
@@ -270,10 +286,11 @@ function App() {
                            onSave={saveTemplate} onArchive={archiveTemplate} onDelete={deleteTemplate} onClose={closeManage} />
           )}
           {manage && manage.type === "floating" && (
-            <FloatingSheet draft={null} onSave={saveFloating} onClose={closeManage} />
+            <FloatingSheet draft={null} members={members} onSave={saveFloating} onClose={closeManage} />
           )}
           {manage && manage.type === "member" && (
-            <MemberSheet member={manage.member} stats={memberStats[manage.member.key]} onClose={closeManage} />
+            <MemberSheet draft={manage.draft} isNew={manage.isNew} stats={memberStats[manage.draft.key]}
+                         onSave={saveMember} onRemove={removeMember} onClose={closeManage} />
           )}
         </Sheet>
 
