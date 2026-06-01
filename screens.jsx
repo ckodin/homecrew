@@ -158,7 +158,7 @@ function TasksScreen({ templates, floating, onEditTemplate, onNewTemplate, onTog
 /* ============================================================
    SETTINGS — household, members, notifications
    ============================================================ */
-function SettingsScreen({ members, membersById, memberStats, onOpenMember, onAddMember }) {
+function SettingsScreen({ members, membersById, memberStats, householdName, onEditName, onOpenMember, onAddMember }) {
   const [notif, setNotif] = useState({ reminders: true, nudges: true, weekly: false });
   const flip = (k) => setNotif((p) => ({ ...p, [k]: !p[k] }));
 
@@ -167,9 +167,8 @@ function SettingsScreen({ members, membersById, memberStats, onOpenMember, onAdd
       <div className="sec" style={{ marginTop: 4 }}>
         <div className="sec-head"><h3 className="sec-title">Household</h3></div>
         <div className="set-group">
-          <div className="set-row"><span className="sr-label">Name</span><span className="sr-val">Home Crew <IconChevR size={16} /></span></div>
-          <div className="set-row"><span className="sr-label">Week starts on</span><span className="sr-val">Monday <IconChevR size={16} /></span></div>
-          <div className="set-row"><span className="sr-label">Members</span><span className="sr-val">{members.length} <IconChevR size={16} /></span></div>
+          <div className="set-row tappable" onClick={onEditName} role="button" tabIndex={0}><span className="sr-label">Name</span><span className="sr-val">{householdName} <IconChevR size={16} /></span></div>
+          <div className="set-row"><span className="sr-label">Members</span><span className="sr-val">{members.length}</span></div>
         </div>
       </div>
 

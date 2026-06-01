@@ -198,4 +198,29 @@ function MemberSheet({ draft, isNew, stats, onSave, onRemove, onClose }) {
   );
 }
 
-Object.assign(window, { Sheet, SheetHeader, TemplateSheet, FloatingSheet, MemberSheet });
+function HouseholdSheet({ draft, onSave, onClose }) {
+  const [d, setD] = useState(draft);
+  useEffect(() => { setD(draft); }, [draft]);
+  const nameRef = React.useRef(null);
+  useEffect(() => {
+    const t = setTimeout(() => nameRef.current?.focus(), 310);
+    return () => clearTimeout(t);
+  }, []);
+  if (!d) return null;
+
+  return (
+    <>
+      <SheetHeader title="Household name" sub="Shown on the board and in settings" onClose={onClose} />
+
+      <p className="field-label">Name</p>
+      <input ref={nameRef} className="tinput" value={d.name} placeholder="e.g. The Smiths"
+             onChange={(e) => setD((p) => ({ ...p, name: e.target.value }))} />
+
+      <button className="sheet-btn primary" style={{ marginTop: 24 }} disabled={!d.name.trim()} onClick={() => onSave(d)}>
+        <IconCheck size={18} sw={2.25} /> Save changes
+      </button>
+    </>
+  );
+}
+
+Object.assign(window, { Sheet, SheetHeader, TemplateSheet, FloatingSheet, MemberSheet, HouseholdSheet });

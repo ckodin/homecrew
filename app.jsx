@@ -38,6 +38,7 @@ function App() {
   const [templates,  setTemplates]  = usePersistentState("hc_templates",  () => CHORES.map((c) => ({ ...c })));
   const [activity,   setActivity]   = usePersistentState("hc_activity",   () => seedActivity());
   const [members,    setMembers]    = usePersistentState("hc_members",    () => seedMembers());
+  const [hhName,     setHhName]     = usePersistentState("hc_householdName", () => "Home Crew");
   const membersById = React.useMemo(() => Object.fromEntries(members.map((m) => [m.key, m])), [members]);
   const [sheetCtx, setSheetCtx] = useState(null);
   const [manage, setManage] = useState(null); // {type:'template'|'floating'|'member', ...}
@@ -199,6 +200,10 @@ function App() {
   };
   const closeManage = () => setManage(null);
 
+  /* ---- household ---- */
+  const editHousehold = () => setManage({ type: "household", draft: { name: hhName } });
+  const saveHousehold = (d) => { setHhName((d.name || "").trim() || "Home Crew"); setManage(null); flash("Saved"); };
+
   /* ---- computed stats ---- */
   const thisWeek = occsByWeek[0] || {};
   const wkVals = Object.values(thisWeek);
@@ -232,7 +237,7 @@ function App() {
         <header className="topbar">
           <div className="topbar-row">
             <div>
-              <h1 className="hh-name">{tab === "board" ? "Home Crew" : titleByTab[tab]}</h1>
+              <h1 className="hh-name">{tab === "board" ? hhName : titleByTab[tab]}</h1>
               <p className="hh-sub">{tab === "board" ? boardSub : tab === "tasks" ? "Recurring & one-off tasks" : tab === "insights" ? "How the load is shared" : "Household & members"}</p>
             </div>
             <div className="avatars">
@@ -274,7 +279,7 @@ function App() {
                                 onEditTemplate={editTemplate} onNewTemplate={newTemplateSheet}
                                 onToggleFloating={toggleFloating} onNewFloating={newFloatingSheet} membersById={membersById} />}
           {tab === "insights" && <Insights weekStats={weekStats} activity={activity} members={members} membersById={membersById} />}
-          {tab === "settings" && <SettingsScreen members={members} membersById={membersById} memberStats={memberStats} onOpenMember={editMember} onAddMember={addMember} />}
+          {tab === "settings" && <SettingsScreen members={members} membersById={membersById} memberStats={memberStats} householdName={hhName} onEditName={editHousehold} onOpenMember={editMember} onAddMember={addMember} />}
         </main>
 
         <CellSheet ctx={sheetCtx} occs={occs} history={hist} members={members} membersById={membersById}
@@ -287,6 +292,9 @@ function App() {
           )}
           {manage && manage.type === "floating" && (
             <FloatingSheet draft={null} members={members} onSave={saveFloating} onClose={closeManage} />
+          )}
+          {manage && manage.type === "household" && (
+            <HouseholdSheet draft={manage.draft} onSave={saveHousehold} onClose={closeManage} />
           )}
           {manage && manage.type === "member" && (
             <MemberSheet draft={manage.draft} isNew={manage.isNew} stats={memberStats[manage.draft.key]}
