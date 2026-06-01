@@ -2,12 +2,98 @@
 
 const { useState, useEffect, useRef } = React;
 
+/* Resolve the board cell under a screen point (used for touch dragging, since
+   touch events don't carry a drop target the way HTML5 drag-and-drop does). */
+function cellFromPoint(x, y) {
+  const el = document.elementFromPoint(x, y);
+  const cellEl = el && el.closest ? el.closest(".cell[data-chore-id]") : null;
+  if (!cellEl) return null;
+  return { el: cellEl, choreId: cellEl.dataset.choreId, dayIdx: Number(cellEl.dataset.dayIdx) };
+}
+const TOUCH_HOLD_MS = 250;   // long-press before a token is "picked up"
+const TOUCH_MOVE_TOL = 10;   // px of movement that cancels the pickup (treated as a scroll)
+
 /* ---------- a single board cell ---------- */
-const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQuickToggle, dragSrc, onMoveToken }) {
+const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQuickToggle, dragSrc, onMoveToken, chores }) {
   const assigned = occ && occ.assignee;
   const done = occ && occ.status === "done";
   const m = assigned ? MEMBERS[occ.assignee] : null;
   const cellRef = useRef(null);
+  const touch = useRef(null);
+
+  /* --- touch drag: long-press to pick up, drag, release to drop --- */
+  const handleTouchStart = (e) => {
+    if (!assigned || e.touches.length !== 1) return;
+    if (e.target.closest && e.target.closest(".qcheck")) return; // let the complete button work
+    const t = e.touches[0];
+    const st = { startX: t.clientX, startY: t.clientY, dragging: false, ghost: null, lastOver: null };
+
+    const positionGhost = (x, y) => {
+      if (st.ghost) { st.ghost.style.left = x + "px"; st.ghost.style.top = y + "px"; }
+    };
+    const updateOver = (x, y) => {
+      const hit = cellFromPoint(x, y);
+      const el = hit ? hit.el : null;
+      if (st.lastOver && st.lastOver !== el) st.lastOver.classList.remove("drag-over");
+      if (el) el.classList.add("drag-over");
+      st.lastOver = el;
+    };
+    const begin = (x, y) => {
+      st.dragging = true;
+      dragSrc.current = { chore, dayIdx };
+      document.body.classList.add("dragging");
+      const ghost = document.createElement("div");
+      ghost.className = "token drag-ghost";
+      ghost.dataset.m = occ.assignee;
+      ghost.style.setProperty("--m", m.color);
+      ghost.textContent = m.initial;
+      document.body.appendChild(ghost);
+      st.ghost = ghost;
+      positionGhost(x, y);
+      updateOver(x, y);
+      if (navigator.vibrate) navigator.vibrate(12);
+    };
+    const cleanup = () => {
+      clearTimeout(st.timer);
+      document.removeEventListener("touchmove", st.onMove);
+      document.removeEventListener("touchend", st.onEnd);
+      document.removeEventListener("touchcancel", st.onEnd);
+      if (st.ghost) st.ghost.remove();
+      if (st.lastOver) st.lastOver.classList.remove("drag-over");
+      document.body.classList.remove("dragging");
+      dragSrc.current = null;
+      touch.current = null;
+    };
+
+    st.onMove = (ev) => {
+      const p = ev.touches[0];
+      if (!st.dragging) {
+        if (Math.abs(p.clientX - st.startX) > TOUCH_MOVE_TOL ||
+            Math.abs(p.clientY - st.startY) > TOUCH_MOVE_TOL) cleanup(); // it's a scroll, not a pickup
+        return;
+      }
+      ev.preventDefault();
+      positionGhost(p.clientX, p.clientY);
+      updateOver(p.clientX, p.clientY);
+    };
+    st.onEnd = (ev) => {
+      if (st.dragging) {
+        const p = ev.changedTouches[0];
+        const hit = cellFromPoint(p.clientX, p.clientY);
+        if (hit) {
+          const dstChore = chores.find((c) => String(c.id) === String(hit.choreId));
+          if (dstChore) onMoveToken(chore, dayIdx, dstChore, hit.dayIdx);
+        }
+      }
+      cleanup();
+    };
+
+    st.timer = setTimeout(() => begin(st.startX, st.startY), TOUCH_HOLD_MS);
+    touch.current = st;
+    document.addEventListener("touchmove", st.onMove, { passive: false });
+    document.addEventListener("touchend", st.onEnd);
+    document.addEventListener("touchcancel", st.onEnd);
+  };
 
   const handleDragStart = (e) => {
     dragSrc.current = { chore, dayIdx };
@@ -40,9 +126,12 @@ const Cell = React.memo(function Cell({ chore, dayIdx, occ, isToday, onOpen, onQ
          className={"cell" + (done ? " done" : "") + (isToday ? " today-col" : "")}
          role="button" tabIndex={0}
          draggable={!!assigned}
+         data-chore-id={chore.id}
+         data-day-idx={dayIdx}
          aria-label={`${chore.name}, ${DAYS_FULL[dayIdx]}, ${done ? "completed by " + m.name : assigned ? "assigned to " + m.name : "unassigned"}`}
          onClick={() => onOpen(chore, dayIdx)}
          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(chore, dayIdx); } }}
+         onTouchStart={assigned ? handleTouchStart : undefined}
          onDragStart={assigned ? handleDragStart : undefined}
          onDragEnd={assigned ? handleDragEnd : undefined}
          onDragOver={handleDragOver}
@@ -93,7 +182,7 @@ function Board({ chores, weekOffset, occs, onOpenCell, onQuickToggle, onMoveToke
                     occ={occs[cellKey(chore.id, i)]}
                     isToday={weekOffset === 0 && i === TODAY_INDEX}
                     onOpen={onOpenCell} onQuickToggle={onQuickToggle}
-                    dragSrc={dragSrc} onMoveToken={onMoveToken} />
+                    dragSrc={dragSrc} onMoveToken={onMoveToken} chores={chores} />
             ))}
           </React.Fragment>
         ))}
